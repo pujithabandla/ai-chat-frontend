@@ -15,7 +15,6 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Generate title from first message
   const generateTitle = (text) => {
     return text.length > 20 ? text.substring(0, 20) + "..." : text;
   };
@@ -38,7 +37,7 @@ function App() {
 
     const userMessage = { role: "user", content: input };
 
-    // Set title if first message
+    // Set title for first message
     if (!chatTitles[currentChat] || chatTitles[currentChat] === "New Chat") {
       setChatTitles((prev) => ({
         ...prev,
@@ -50,45 +49,36 @@ function App() {
     setInput("");
     setIsTyping(true);
 
-    // Add empty assistant message
+    // Add placeholder assistant message
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
-      const response = await fetch("https://ai-chat-backend-r8jz.onrender.com/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: currentChat,
-          message: input,
-        }),
+      const response = await fetch(
+        "https://ai-chat-backend-r8jz.onrender.com/chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: currentChat,
+            message: input,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      const fullText = data.response || "Error: No response";
+
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: fullText,
+        };
+        return updated;
       });
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-
-      let done = false;
-      let fullText = "";
-
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-
-        const chunk = decoder.decode(value || new Uint8Array());
-        fullText += chunk;
-
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            role: "assistant",
-            content: fullText,
-          };
-          return updated;
-        });
-      }
-
-      setIsTyping(false);
 
       setChats((prev) => ({
         ...prev,
@@ -99,6 +89,7 @@ function App() {
         ],
       }));
 
+      setIsTyping(false);
     } catch (err) {
       console.error(err);
       setIsTyping(false);
@@ -117,7 +108,9 @@ function App() {
           {Object.keys(chats).map((chatId) => (
             <div
               key={chatId}
-              className={`chat-item ${chatId === currentChat ? "active" : ""}`}
+              className={`chat-item ${
+                chatId === currentChat ? "active" : ""
+              }`}
               onClick={() => switchChat(chatId)}
             >
               {chatTitles[chatId]}
@@ -146,7 +139,9 @@ function App() {
             <div className="message-row assistant">
               <div className="avatar">🤖</div>
               <div className="typing">
-                <span></span><span></span><span></span>
+                <span></span>
+                <span></span>
+                <span></span>
               </div>
             </div>
           )}
