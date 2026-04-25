@@ -1,56 +1,31 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [chats, setChats] = useState({ chat1: [] });
-  const [currentChat, setCurrentChat] = useState("chat1");
-  const [chatTitles, setChatTitles] = useState({ chat1: "New Chat" });
   const [isTyping, setIsTyping] = useState(false);
 
   const messagesEndRef = useRef(null);
 
+  // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const generateTitle = (text) => {
-    return text.length > 20 ? text.substring(0, 20) + "..." : text;
-  };
-
-  const startNewChat = () => {
-    const newId = "chat" + (Object.keys(chats).length + 1);
-    setChats((prev) => ({ ...prev, [newId]: [] }));
-    setChatTitles((prev) => ({ ...prev, [newId]: "New Chat" }));
-    setMessages([]);
-    setCurrentChat(newId);
-  };
-
-  const switchChat = (chatId) => {
-    setCurrentChat(chatId);
-    setMessages(chats[chatId] || []);
-  };
-
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const userMessage = { role: "user", content: input };
+    const userMessage = {
+      role: "user",
+      content: input,
+    };
 
-    // Set title for first message
-    if (!chatTitles[currentChat] || chatTitles[currentChat] === "New Chat") {
-      setChatTitles((prev) => ({
-        ...prev,
-        [currentChat]: generateTitle(input),
-      }));
-    }
-
+    // Add user message
     setMessages((prev) => [...prev, userMessage]);
+
     setInput("");
     setIsTyping(true);
-
-    // Add placeholder assistant message
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
       const response = await fetch(
@@ -61,7 +36,7 @@ function App() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            user_id: currentChat,
+            user_id: "user1",
             message: input,
           }),
         }
@@ -69,57 +44,31 @@ function App() {
 
       const data = await response.json();
 
-      const fullText = data.response || "Error: No response";
+      const botMessage = {
+        role: "assistant",
+        content: data.response || "No response",
+      };
 
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          role: "assistant",
-          content: fullText,
-        };
-        return updated;
-      });
+      // Add bot response
+      setMessages((prev) => [...prev, botMessage]);
 
-      setChats((prev) => ({
+    } catch (error) {
+      console.error(error);
+
+      setMessages((prev) => [
         ...prev,
-        [currentChat]: [
-          ...(prev[currentChat] || []),
-          userMessage,
-          { role: "assistant", content: fullText },
-        ],
-      }));
-
-      setIsTyping(false);
-    } catch (err) {
-      console.error(err);
-      setIsTyping(false);
+        {
+          role: "assistant",
+          content: "Error connecting to server",
+        },
+      ]);
     }
+
+    setIsTyping(false);
   };
 
   return (
     <div className="app">
-      {/* Sidebar */}
-      <div className="sidebar">
-        <button className="new-chat" onClick={startNewChat}>
-          + New Chat
-        </button>
-
-        <div className="chat-list">
-          {Object.keys(chats).map((chatId) => (
-            <div
-              key={chatId}
-              className={`chat-item ${
-                chatId === currentChat ? "active" : ""
-              }`}
-              onClick={() => switchChat(chatId)}
-            >
-              {chatTitles[chatId]}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Chat */}
       <div className="chat-container">
         <div className="header">AI Chat</div>
 
@@ -129,6 +78,7 @@ function App() {
               <div className="avatar">
                 {msg.role === "user" ? "🧑" : "🤖"}
               </div>
+
               <div className={`message ${msg.role}`}>
                 {msg.content}
               </div>
@@ -138,11 +88,7 @@ function App() {
           {isTyping && (
             <div className="message-row assistant">
               <div className="avatar">🤖</div>
-              <div className="typing">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
+              <div className="typing">Typing...</div>
             </div>
           )}
 
@@ -151,11 +97,15 @@ function App() {
 
         <div className="input-box">
           <input
+            type="text"
             value={input}
+            placeholder="Type a message..."
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Message AI..."
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") sendMessage();
+            }}
           />
+
           <button onClick={sendMessage}>Send</button>
         </div>
       </div>
