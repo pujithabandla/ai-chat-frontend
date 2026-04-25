@@ -1,31 +1,17 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import "./App.css";
 
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-
-  const messagesEndRef = useRef(null);
-
-  // Auto scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const userMessage = {
-      role: "user",
-      content: input,
-    };
+    const userMessage = { role: "user", content: input };
 
-    // Add user message
-    setMessages((prev) => [...prev, userMessage]);
-
+    setMessages([...messages, userMessage]);
     setInput("");
-    setIsTyping(true);
 
     try {
       const response = await fetch(
@@ -49,66 +35,34 @@ function App() {
         content: data.response || "No response",
       };
 
-      // Add bot response
       setMessages((prev) => [...prev, botMessage]);
 
-    } catch (error) {
-      console.error(error);
-
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content: "Error connecting to server",
-        },
+        { role: "assistant", content: "Error connecting to server" },
       ]);
     }
-
-    setIsTyping(false);
   };
 
   return (
     <div className="app">
-      <div className="chat-container">
-        <div className="header">AI Chat</div>
+      <h1>AI Chat</h1>
 
-        <div className="messages">
-          {messages.map((msg, index) => (
-            <div key={index} className={`message-row ${msg.role}`}>
-              <div className="avatar">
-                {msg.role === "user" ? "🧑" : "🤖"}
-              </div>
-
-              <div className={`message ${msg.role}`}>
-                {msg.content}
-              </div>
-            </div>
-          ))}
-
-          {isTyping && (
-            <div className="message-row assistant">
-              <div className="avatar">🤖</div>
-              <div className="typing">Typing...</div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="input-box">
-          <input
-            type="text"
-            value={input}
-            placeholder="Type a message..."
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") sendMessage();
-            }}
-          />
-
-          <button onClick={sendMessage}>Send</button>
-        </div>
+      <div className="messages">
+        {messages.map((msg, i) => (
+          <div key={i}>
+            <b>{msg.role}:</b> {msg.content}
+          </div>
+        ))}
       </div>
+
+      <input
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Type message..."
+      />
+      <button onClick={sendMessage}>Send</button>
     </div>
   );
 }
